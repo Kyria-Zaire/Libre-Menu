@@ -1,15 +1,30 @@
-// Remarque : Le code ci-dessous est une simulation. En réalité, tu devrais intégrer
-// une bibliothèque pour appeler une API de vision comme OpenAI ou Gemini.
+// La plupart des plateformes serverless utilisent ce format
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Accède à la clé API depuis les variables d'environnement de Vercel
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-vision-latest" });
 
 const callVisionAPI = async (base64Image) => {
-    // Cette fonction simule la reconnaissance d'image
-    // L'IA de vision analyserait la base64Image et retournerait une liste d'ingrédients.
-    console.log("Analyse de l'image par l'IA de vision...");
+    // Le prompt que nous enverrons à Gemini
+    const visionPrompt = "Décris-moi tous les ingrédients et aliments que tu vois sur cette image. Sois très précis et liste-les sous forme de tableau JSON. Ne réponds que sous la forme d'un tableau JSON. Exemple : ['tomates', 'oignons', 'ail', 'riz']";
     
-    // Exemple de réponse de l'IA de vision
-    const ingredients = ['Riz', 'Poisson', 'Tomate', 'Oignon'];
+    // Le contenu que nous envoyons, incluant le texte et l'image
+    const result = await model.generateContent([
+        visionPrompt,
+        {
+            inlineData: {
+                data: base64Image.split(",")[1],
+                mimeType: "image/jpeg",
+            }
+        }
+    ]);
+
+    const response = await result.response;
+    const recognizedIngredients = JSON.parse(response.text());
     
-    return ingredients;
+    return recognizedIngredients;
 };
 
 const callTextAPI = async (ingredients) => {
@@ -49,12 +64,17 @@ const callTextAPI = async (ingredients) => {
 module.exports = async (request, response) => {
     // 1. On récupère le fichier image (encodé en base64)
     const { image } = request.body;
+    
+    // Si une image est fournie, on la traite
+    if (image) {
+        // 2. On appelle l'IA de vision pour reconnaître les ingrédients
+        const recognizedIngredients = await callVisionAPI(image);
+        return response.status(200).json({ recognizedIngredients });
+    }
 
-    // 2. On appelle l'IA de vision pour reconnaître les ingrédients
-    const recognizedIngredients = await callVisionAPI(image);
-
-    // 3. On appelle notre IA de texte pour générer la recette
-    const recipe = await callTextAPI(recognizedIngredients);
+    // 3. Si des ingrédients sont envoyés, on génère la recette
+    const { ingredients } = request.body;
+    const recipe = await callTextAPI(ingredients);
     
     // 4. On renvoie la réponse
     response.status(200).json(recipe);
