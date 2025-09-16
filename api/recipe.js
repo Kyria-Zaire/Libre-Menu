@@ -1,17 +1,24 @@
-// La plupart des plateformes serverless utilisent ce format
+// On importe les bibliothèques nécessaires
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Accède à la clé API depuis les variables d'environnement de Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-vision-latest" });
+// Initialise le modèle de vision pour l'analyse d'image
+const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-vision-latest" });
 
+// Initialise le modèle de texte pour la génération de recette
+const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+
+/**
+ * Appelle l'API de vision pour reconnaître les ingrédients d'une image
+ * @param {string} base64Image - L'image encodée en base64
+ * @returns {Promise<string[]>} Une liste des ingrédients reconnus
+ */
 const callVisionAPI = async (base64Image) => {
-    // Le prompt que nous enverrons à Gemini
-    const visionPrompt = "Décris-moi tous les ingrédients et aliments que tu vois sur cette image. Sois très précis et liste-les sous forme de tableau JSON. Ne réponds que sous la forme d'un tableau JSON. Exemple : ['tomates', 'oignons', 'ail', 'riz']";
+    const visionPrompt = "Décris tous les ingrédients et aliments que tu vois sur cette image. Sois très précis et liste-les sous forme d'un tableau JSON. Ne réponds que sous la forme d'un tableau JSON. Exemple : ['tomates', 'oignons', 'ail', 'riz']";
     
-    // Le contenu que nous envoyons, incluant le texte et l'image
-    const result = await model.generateContent([
+    const result = await visionModel.generateContent([
         visionPrompt,
         {
             inlineData: {
@@ -22,11 +29,20 @@ const callVisionAPI = async (base64Image) => {
     ]);
 
     const response = await result.response;
-    const recognizedIngredients = JSON.parse(response.text());
-    
-    return recognizedIngredients;
+    try {
+        const recognizedIngredients = JSON.parse(response.text());
+        return recognizedIngredients;
+    } catch (error) {
+        console.error("Erreur de parsing de la réponse de l'IA:", error);
+        return [];
+    }
 };
 
+/**
+ * Appelle l'API de texte pour générer une recette à partir d'ingrédients
+ * @param {string[]} ingredients - La liste des ingrédients
+ * @returns {Promise<object>} L'objet recette généré par l'IA
+ */
 const callTextAPI = async (ingredients) => {
     const prompt = `Tu es un chef cuisinier minimaliste et expert en cuisine des restes. Tu suis toutes les instructions à la lettre. Ton but est de générer des recettes réalisables avec les ingrédients fournis, sans en ignorer aucun.
 
@@ -44,38 +60,37 @@ const callTextAPI = async (ingredients) => {
 
     Liste d'ingrédients de l'utilisateur : ${ingredients.join(', ')}`;
     
-    // Ici, le code appellerait une API de texte comme GPT-4
-    // Pour la démo, on simule une réponse
-    const recipeData = {
-        name: "Poisson, riz et tomates à l'oignon",
-        ingredients: ['Poisson', 'Riz', 'Tomates', 'Oignon'],
-        shopping_list: ['Sel', 'Poivre', 'Huile'],
-        instructions: [
-            "Fais cuire le riz selon les instructions du paquet.",
-            "Pendant ce temps, coupe le poisson, les tomates et l'oignon.",
-            "Dans une poêle, fais revenir les oignons dans de l'huile. Ajoute les tomates et le poisson.",
-            "Assaisonne de sel et de poivre. Sers le tout sur un lit de riz."
-        ]
-    };
-    
-    return recipeData;
+    const result = await textModel.generateContent(prompt);
+    const response = await result.response;
+    try {
+        const recipeData = JSON.parse(response.text());
+        return recipeData;
+    } catch (error) {
+        console.error("Erreur de parsing de la réponse de l'IA:", error);
+        return {
+            name: "Recette non disponible",
+            ingredients: [],
+            shopping_list: [],
+            instructions: ["Désolé, l'IA n'a pas pu générer de recette. Veuillez essayer d'autres ingrédients."]
+        };
+    }
 };
 
 module.exports = async (request, response) => {
-    // 1. On récupère le fichier image (encodé en base64)
-    const { image } = request.body;
+    const { image, ingredients } = request.body;
     
-    // Si une image est fournie, on la traite
+    // Si une image est fournie, on appelle l'API de vision
     if (image) {
-        // 2. On appelle l'IA de vision pour reconnaître les ingrédients
         const recognizedIngredients = await callVisionAPI(image);
         return response.status(200).json({ recognizedIngredients });
     }
 
-    // 3. Si des ingrédients sont envoyés, on génère la recette
-    const { ingredients } = request.body;
-    const recipe = await callTextAPI(ingredients);
+    // Si une liste d'ingrédients est fournie, on appelle l'API de texte
+    if (ingredients) {
+        const recipe = await callTextAPI(ingredients);
+        return response.status(200).json(recipe);
+    }
     
-    // 4. On renvoie la réponse
-    response.status(200).json(recipe);
+    // Si rien n'est fourni, on renvoie une erreur
+    response.status(400).json({ error: "Aucune image ou ingrédient fourni." });
 };
