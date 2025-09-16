@@ -4,7 +4,6 @@ const imagePreviewContainer = document.getElementById('image-preview-container')
 const imagePreview = document.getElementById('image-preview');
 const ingredientsRecognitionSection = document.getElementById('ingredients-recognition-section');
 const ingredientsList = document.getElementById('ingredients-list');
-const getRecipeBtn = document.getElementById('get-recipe-btn');
 const resultSection = document.getElementById('result-section');
 
 // Gérer l'upload de l'image
@@ -24,16 +23,18 @@ imageUpload.addEventListener('change', async (event) => {
 
     // Affiche le message de chargement
     ingredientsRecognitionSection.classList.add('hidden');
-    getRecipeBtn.classList.add('hidden');
     resultSection.classList.remove('hidden');
     resultSection.innerHTML = '<p>Analyse de votre image et génération de la recette...</p>';
+
+    // Crée un objet FormData pour envoyer le fichier
+    const formData = new FormData();
+    formData.append('image', file);
 
     // Envoie l'image au backend
     try {
         const response = await fetch('/api/recipe', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: await toBase64(file) })
+            body: formData, // Envoi direct du FormData
         });
         
         if (!response.ok) {
@@ -48,7 +49,6 @@ imageUpload.addEventListener('change', async (event) => {
         displayRecipe(recipe);
 
         ingredientsRecognitionSection.classList.remove('hidden');
-        getRecipeBtn.classList.remove('hidden'); // Plus besoin, on peut le masquer
         
     } catch (error) {
         console.error('Erreur:', error);
@@ -57,15 +57,6 @@ imageUpload.addEventListener('change', async (event) => {
 });
 
 // Fonctions utilitaires
-function toBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-}
-
 function displayRecognizedIngredients(ingredients) {
     ingredientsList.innerHTML = '';
     ingredients.forEach(ingredient => {
