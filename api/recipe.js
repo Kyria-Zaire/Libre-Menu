@@ -6,7 +6,7 @@ const visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 const textModel  = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 const cleanJson = (str) =>
-  str.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+  str.replace(/^[^{]*/, '').replace(/[^}]*$/, ''); // garde seulement {…}
 
 const callVisionAPI = async (base64Image) => {
   const prompt = 'Liste tous les aliments visibles en JSON unique. Réponse : ["item1", "item2", …]';
@@ -27,16 +27,30 @@ const callVisionAPI = async (base64Image) => {
 };
 
 const callTextAPI = async (ingredients) => {
-  const prompt = `… (même prompt qu’avant) …`;
+  const prompt = `Tu es un chef cuisinier minimaliste et expert en cuisine des restes.
+Règles ABSOLUES :
+- Utilise TOUS les ingrédients fournis : ${ingredients.join(', ')}.
+- Ne jamais proposer d’ingrédients contradictoires.
+- Réponse UNIQUEMENT au format JSON ci-dessous, sans aucun commentaire avant ou après.
+{
+  "name":"Nom recette (≤5 mots)",
+  "ingredients":["tous ingrédients, condiments inclus"],
+  "shopping_list":["seuls ingrédients manquants"],
+  "instructions":["Étape 1","Étape 2","…"]
+}
+Si tu échoues, je perds mon travail.`;
+
   const result = await textModel.generateContent(prompt);
   try {
-    return JSON.parse(cleanJson(result.response.text()));
-  } catch {
+    const raw = result.response.text();
+    return JSON.parse(cleanJson(raw));
+  } catch (e) {
+    console.warn('JSON invalide → fallback', e);
     return {
       name: 'Recette non disponible',
-      ingredients: [],
+      ingredients: ingredients,
       shopping_list: [],
-      instructions: ['Désolé, l’IA n’a pas pu générer de recette.'],
+      instructions: ['Désolé, l’IA n’a pas pu formater la recette.']
     };
   }
 };
