@@ -2,9 +2,8 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const visionModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
-const textModel   = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
+const visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const textModel   = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 // ---------- RETRY ROBUSTE ----------
 async function robustGenerate(model, prompt, payload = null, retries = 3) {
   for (let i = 0; i < retries; i++) {
