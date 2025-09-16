@@ -1,4 +1,4 @@
-// On sélectionne les nouveaux éléments HTML de la V2
+// On sélectionne les éléments HTML
 const imageUpload = document.getElementById('image-upload');
 const imagePreviewContainer = document.getElementById('image-preview-container');
 const imagePreview = document.getElementById('image-preview');
@@ -7,14 +7,16 @@ const ingredientsList = document.getElementById('ingredients-list');
 const getRecipeBtn = document.getElementById('get-recipe-btn');
 const resultSection = document.getElementById('result-section');
 
-// On ajoute un écouteur d'événement sur le champ de fichier
+let recognizedIngredients = [];
+
+// Étape 1 : Gérer l'upload de l'image
 imageUpload.addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) {
         return;
     }
 
-    // On affiche l'image sélectionnée
+    // Affiche l'image sélectionnée
     const reader = new FileReader();
     reader.onload = (e) => {
         imagePreview.src = e.target.result;
@@ -22,53 +24,60 @@ imageUpload.addEventListener('change', async (event) => {
     };
     reader.readAsDataURL(file);
 
-    // On prépare l'UI pour la reconnaissance des ingrédients
-    ingredientsRecognitionSection.classList.add('hidden');
+    // Prépare l'UI pour la reconnaissance des ingrédients
+    ingredientsRecognitionSection.classList.remove('hidden');
     getRecipeBtn.classList.add('hidden');
     ingredientsList.innerHTML = '';
-    resultSection.innerHTML = '';
+    resultSection.innerHTML = '<p>Analyse de votre image...</p>';
 
-    // On simule l'appel à la fonction de reconnaissance d'image
-    // PROCHAINE ÉTAPE: On remplacera cette partie par un VRAI appel à l'IA de vision
-    const recognizedIngredients = await new Promise(resolve => {
-        setTimeout(() => {
-            const fakeIngredients = ['tomate', 'riz', 'oignon', 'lait de coco', 'ail', 'poivre'];
-            resolve(fakeIngredients);
-        }, 2000);
-    });
-
-    // On affiche les ingrédients reconnus et le bouton
-    displayRecognizedIngredients(recognizedIngredients);
-    ingredientsRecognitionSection.classList.remove('hidden');
-    getRecipeBtn.classList.remove('hidden');
-});
-
-
-// On ajoute un écouteur d'événement sur le bouton "Générer ma recette"
-getRecipeBtn.addEventListener('click', async () => {
-    // 1. On récupère les ingrédients de la liste
-    const ingredientTags = document.querySelectorAll('.ingredient-tag');
-    const ingredients = Array.from(ingredientTags).map(tag => tag.textContent);
-
-    if (ingredients.length === 0) {
-        alert('Veuillez sélectionner au moins un ingrédient !');
-        return;
-    }
-
-    // 2. On affiche l'état de chargement
-    getRecipeBtn.textContent = 'Génération en cours...';
-    getRecipeBtn.disabled = true;
-    resultSection.innerHTML = '<p>Préparation de la recette...</p>';
-    resultSection.classList.remove('hidden');
-
-    // 3. Appel de l'IA (le vrai !)
+    // Envoie l'image au backend
     try {
         const response = await fetch('/api/recipe', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ingredients: ingredients.join(', ') })
+            body: JSON.stringify({ image: await toBase64(file) })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erreur de connexion au serveur.');
+        }
+
+        const data = await response.json();
+        recognizedIngredients = data.recognizedIngredients;
+
+        // Affiche les ingrédients et le bouton de génération
+        displayRecognizedIngredients(recognizedIngredients);
+        resultSection.innerHTML = '<p>Liste d\'ingrédients prête !</p>';
+        getRecipeBtn.classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue lors de l'analyse de l'image. Veuillez réessayer.</p>`;
+    }
+});
+
+
+// Étape 2 : Gérer la génération de la recette
+getRecipeBtn.addEventListener('click', async () => {
+    if (recognizedIngredients.length === 0) {
+        alert('Veuillez sélectionner au moins un ingrédient !');
+        return;
+    }
+
+    // Affiche l'état de chargement
+    getRecipeBtn.textContent = 'Génération en cours...';
+    getRecipeBtn.disabled = true;
+    resultSection.innerHTML = '<p>Préparation de la recette...</p>';
+
+    try {
+        const response = await fetch('/api/recipe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ingredients: recognizedIngredients.join(', ') })
         });
         
         if (!response.ok) {
@@ -76,21 +85,25 @@ getRecipeBtn.addEventListener('click', async () => {
         }
 
         const recipe = await response.json();
-        
-        // 4. On affiche la vraie recette sur la page
         displayRecipe(recipe);
         
     } catch (error) {
-        // 5. En cas d'erreur, on affiche un message
         console.error('Erreur:', error);
-        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue. Veuillez réessayer.</p>`;
-        getRecipeBtn.textContent = 'Générer ma recette';
-        getRecipeBtn.disabled = false;
+        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue lors de la génération de la recette. Veuillez réessayer.</p>`;
     }
 });
 
 
-// Fonction pour afficher les ingrédients reconnus
+// Fonctions utilitaires
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
 function displayRecognizedIngredients(ingredients) {
     ingredientsList.innerHTML = '';
     ingredients.forEach(ingredient => {
@@ -98,12 +111,15 @@ function displayRecognizedIngredients(ingredients) {
         tag.className = 'ingredient-tag';
         tag.textContent = ingredient;
         
-        // Permet à l'utilisateur de supprimer un ingrédient
         const removeBtn = document.createElement('span');
         removeBtn.className = 'remove-tag-btn';
         removeBtn.textContent = 'x';
         removeBtn.addEventListener('click', () => {
             tag.remove();
+            const index = recognizedIngredients.indexOf(ingredient);
+            if (index > -1) {
+                recognizedIngredients.splice(index, 1);
+            }
         });
         
         tag.appendChild(removeBtn);
@@ -111,13 +127,10 @@ function displayRecognizedIngredients(ingredients) {
     });
 }
 
-// Fonction pour afficher la recette sur la page
 function displayRecipe(recipe) {
-    // On réinitialise l'état du bouton
     getRecipeBtn.textContent = 'Générer ma recette';
     getRecipeBtn.disabled = false;
 
-    // On construit l'HTML pour la recette
     let htmlContent = `<h2>${recipe.name}</h2>`;
     
     htmlContent += '<h3>Ingrédients nécessaires :</h3><ul>';
@@ -138,6 +151,5 @@ function displayRecipe(recipe) {
     });
     htmlContent += '</ol>';
 
-    // On affiche le tout dans la section de résultat
     resultSection.innerHTML = htmlContent;
 }
