@@ -1,5 +1,7 @@
-// On importe les bibliothèques nécessaires
+// La plupart des plateformes serverless utilisent ce format
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { Readable } = require('stream');
+const getFileType = require('file-type');
 
 // Accède à la clé API depuis les variables d'environnement de Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -16,7 +18,7 @@ const callVisionAPI = async (base64Image) => {
         visionPrompt,
         {
             inlineData: {
-                data: base64Image.split(",")[1],
+                data: base64Image,
                 mimeType: "image/jpeg",
             }
         }
@@ -60,18 +62,31 @@ const callTextAPI = async (ingredients) => {
     }
 };
 
+// Fonction utilitaire pour convertir un stream en buffer
+const streamToBuffer = (stream) => {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        stream.on('data', chunk => chunks.push(chunk));
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+        stream.on('error', reject);
+    });
+};
+
 module.exports = async (request, response) => {
-    const { image } = request.body;
-    
-    if (image) {
-        try {
-            const recognizedIngredients = await callVisionAPI(image);
-            const recipe = await callTextAPI(recognizedIngredients);
-            return response.status(200).json({ recognizedIngredients, recipe });
-        } catch (error) {
-            return response.status(500).json({ error: "Une erreur est survenue lors de la génération de la recette." });
-        }
+    try {
+        const buffer = await streamToBuffer(request);
+        
+        // Simule le parse de FormData
+        const imagePart = buffer.toString('utf-8').match(/Content-Type: image\/(.*?)\r\n\r\n(.*?)\r\n--/s);
+        const fileBuffer = Buffer.from(imagePart[2].replace(/\s/g, ''), 'hex');
+        
+        const recognizedIngredients = await callVisionAPI(fileBuffer.toString('base64'));
+        const recipe = await callTextAPI(recognizedIngredients);
+        
+        return response.status(200).json({ recognizedIngredients, recipe });
+        
+    } catch (error) {
+        console.error('Erreur du serveur:', error);
+        return response.status(500).json({ error: "Une erreur est survenue lors de la génération de la recette." });
     }
-    
-    response.status(400).json({ error: "Aucune image fournie." });
 };
