@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Libre Menu - Le Chef qui te simplifie la vie</title>
+    <title>Libre Menu V2 - Le Chef qui te simplifie la vie</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,19 +12,32 @@
 <body>
 
     <main class="container">
-        <h1 class="logo">Libre Menu</h1>
-        <p class="tagline">Trouvez votre prochaine recette avec ce que vous avez déjà.</p>
+        <h1 class="logo">Libre Menu V2</h1>
+        <p class="tagline">Trouvez l'inspiration en prenant une photo de votre frigo.</p>
 
         <div class="input-section">
-            <textarea id="ingredients-input" rows="5" placeholder="Tomates, oignons, œufs, riz, basilic..."></textarea>
-            <button id="get-recipe-btn">Trouver ma recette</button>
+            <label for="image-upload" class="upload-btn">
+                <span class="icon">📸</span> Prendre en photo mon frigo
+            </label>
+            <input type="file" id="image-upload" accept="image/*" class="hidden">
+
+            <div id="image-preview-container" class="hidden">
+                <img id="image-preview" src="#" alt="Aperçu de l'image" />
+            </div>
+
+            <div id="ingredients-recognition-section" class="hidden">
+                <p>Ingrédients reconnus :</p>
+                <div id="ingredients-list">
+                    </div>
+            </div>
+            
+            <button id="get-recipe-btn" class="hidden">Générer ma recette</button>
         </div>
 
         <div id="result-section" class="hidden">
-        </div>
+            </div>
     </main>
 
     <script src="script.js"></script>
-
 </body>
 </html>

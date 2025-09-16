@@ -1,51 +1,61 @@
-// Définis un rôle très précis
-const systemPrompt = "Tu es un chef cuisinier minimaliste et expert en cuisine des restes. Tu suis toutes les instructions à la lettre. Ton but est de générer des recettes réalisables avec les ingrédients fournis, sans en ignorer aucun.";
+// Remarque : Le code ci-dessous est une simulation. En réalité, tu devrais intégrer
+// une bibliothèque pour appeler une API de vision comme OpenAI ou Gemini.
 
-// Définis les contraintes de format de la réponse
-const userPrompt = `À partir de la liste d'ingrédients ci-dessous, génère une recette simple en utilisant TOUS les ingrédients. La réponse doit être au format JSON et contenir les champs suivants :
-{
-  "name": "Nom de la recette (moins de 5 mots)",
-  "ingredients": ["Liste de tous les ingrédients, incluant les condiments comme l'huile, le sel, le poivre."],
-  "shopping_list": ["Liste des ingrédients à acheter qui ne sont pas dans la liste de l'utilisateur."],
-  "instructions": ["Étape 1.", "Étape 2.", "Étape 3.", "..."]
-}
+const callVisionAPI = async (base64Image) => {
+    // Cette fonction simule la reconnaissance d'image
+    // L'IA de vision analyserait la base64Image et retournerait une liste d'ingrédients.
+    console.log("Analyse de l'image par l'IA de vision...");
+    
+    // Exemple de réponse de l'IA de vision
+    const ingredients = ['Riz', 'Poisson', 'Tomate', 'Oignon'];
+    
+    return ingredients;
+};
 
-Contraintes importantes :
-- Utilise ABSOLUMENT TOUS les ingrédients fournis.
-- Ne propose JAMAIS d'ingrédients qui contredisent un ingrédient déjà fourni (ex: ne pas ajouter de viande ou de poisson si la recette est végétarienne).
+const callTextAPI = async (ingredients) => {
+    const prompt = `Tu es un chef cuisinier minimaliste et expert en cuisine des restes. Tu suis toutes les instructions à la lettre. Ton but est de générer des recettes réalisables avec les ingrédients fournis, sans en ignorer aucun.
 
-Liste d'ingrédients de l'utilisateur : [INGRÉDIENTS_FOURNIS_PAR_UTILISATEUR]`;
+    À partir de la liste d'ingrédients ci-dessous, génère une recette simple en utilisant TOUS les ingrédients. La réponse doit être au format JSON et contenir les champs suivants :
+    {
+      "name": "Nom de la recette (moins de 5 mots)",
+      "ingredients": ["Liste de tous les ingrédients, incluant les condiments comme l'huile, le sel, le poivre."],
+      "shopping_list": ["Liste des ingrédients à acheter qui ne sont pas dans la liste de l'utilisateur."],
+      "instructions": ["Étape 1.", "Étape 2.", "Étape 3.", "..."]
+    }
 
-const finalPrompt = systemPrompt + userPrompt;
+    Contraintes importantes :
+    - Utilise ABSOLUMENT TOUS les ingrédients fournis.
+    - Ne propose JAMAIS d'ingrédients qui contredisent un ingrédient déjà fourni (ex: pas de recette végétarienne si l'utilisateur a donné de la viande).
 
-// La plupart des plateformes serverless utilisent ce format
-// On simule une connexion à une API d'IA
-const callAIAPI = async (prompt) => {
-    // Note importante : C'est ici que tu devras intégrer le vrai code pour appeler une API d'IA
-    // Pour l'instant, on renvoie une fausse réponse pour tester la structure
+    Liste d'ingrédients de l'utilisateur : ${ingredients.join(', ')}`;
+    
+    // Ici, le code appellerait une API de texte comme GPT-4
+    // Pour la démo, on simule une réponse
     const recipeData = {
-        name: 'Poisson riz et tomate',
-        ingredients: ['Poisson', 'Riz', 'Tomate', 'Huile', 'Sel', 'Poivre'],
-        shopping_list: ['Rien à acheter, félicitations !'],
+        name: "Poisson, riz et tomates à l'oignon",
+        ingredients: ['Poisson', 'Riz', 'Tomates', 'Oignon'],
+        shopping_list: ['Sel', 'Poivre', 'Huile'],
         instructions: [
-            'Faites cuire le riz selon les instructions du paquet.',
-            'Dans une poêle, faites revenir le poisson et les tomates.',
-            'Salez, poivrez et servez le poisson avec le riz cuit.'
+            "Fais cuire le riz selon les instructions du paquet.",
+            "Pendant ce temps, coupe le poisson, les tomates et l'oignon.",
+            "Dans une poêle, fais revenir les oignons dans de l'huile. Ajoute les tomates et le poisson.",
+            "Assaisonne de sel et de poivre. Sers le tout sur un lit de riz."
         ]
     };
+    
     return recipeData;
 };
 
 module.exports = async (request, response) => {
-    // 1. On récupère les ingrédients envoyés par notre site web
-    const { ingredients } = request.body;
+    // 1. On récupère le fichier image (encodé en base64)
+    const { image } = request.body;
+
+    // 2. On appelle l'IA de vision pour reconnaître les ingrédients
+    const recognizedIngredients = await callVisionAPI(image);
+
+    // 3. On appelle notre IA de texte pour générer la recette
+    const recipe = await callTextAPI(recognizedIngredients);
     
-    // 2. On construit notre prompt pour l'IA
-    const prompt = finalPrompt.replace('[INGRÉDIENTS_FOURNIS_PAR_UTILISATEUR]', ingredients);
-    
-    // 3. On appelle notre "service d'IA"
-    const recipe = await callAIAPI(prompt);
-    
-    // 4. On renvoie la réponse à notre site web
+    // 4. On renvoie la réponse
     response.status(200).json(recipe);
 };
