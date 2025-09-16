@@ -33,28 +33,88 @@ body {
     margin-bottom: 20px;
 }
 
-#ingredients-input {
-    width: 90%;
-    min-height: 100px;
-    padding: 15px;
-    border: 2px solid #ddd;
+/* Nouvelles règles pour l'interface V2 */
+
+.upload-btn {
+    display: inline-block;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    background-color: #4b89dc;
     border-radius: 8px;
-    font-size: 1rem;
-    resize: none;
-    box-sizing: border-box;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 10px;
 }
+
+.upload-btn:hover {
+    background-color: #3a75c4;
+}
+
+.upload-btn .icon {
+    font-size: 1.2rem;
+    margin-right: 10px;
+}
+
+#image-upload.hidden {
+    display: none;
+}
+
+#image-preview-container {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#image-preview {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+    margin: 0 auto 20px auto;
+}
+
+#ingredients-recognition-section {
+    margin-top: 20px;
+    text-align: left;
+}
+
+#ingredients-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.ingredient-tag {
+    background-color: #e0e0e0;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+}
+
+.remove-tag-btn {
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+/* Anciennes règles (modifiées pour les boutons) */
 
 #get-recipe-btn {
     padding: 15px 30px;
     font-size: 1.1rem;
     font-weight: 700;
     color: white;
-    background-color: #ff6347; /* Couleur inspirée de "Menu" */
+    background-color: #ff6347;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.3s;
-    margin-top: 10px;
+    margin-top: 20px;
 }
 
 #get-recipe-btn:hover {
