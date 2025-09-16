@@ -1,19 +1,36 @@
+// Définis un rôle très précis
+const systemPrompt = "Tu es un chef cuisinier minimaliste et expert en cuisine des restes. Tu suis toutes les instructions à la lettre. Ton but est de générer des recettes réalisables avec les ingrédients fournis, sans en ignorer aucun.";
+
+// Définis les contraintes de format de la réponse
+const userPrompt = `À partir de la liste d'ingrédients ci-dessous, génère une recette simple en utilisant TOUS les ingrédients. La réponse doit être au format JSON et contenir les champs suivants :
+{
+  "name": "Nom de la recette (moins de 5 mots)",
+  "ingredients": ["Liste de tous les ingrédients, incluant les condiments comme l'huile, le sel, le poivre."],
+  "shopping_list": ["Liste des ingrédients à acheter qui ne sont pas dans la liste de l'utilisateur."],
+  "instructions": ["Étape 1.", "Étape 2.", "Étape 3.", "..."]
+}
+
+Contraintes importantes :
+- Utilise ABSOLUMENT TOUS les ingrédients fournis.
+- Ne propose JAMAIS d'ingrédients qui contredisent un ingrédient déjà fourni (ex: ne pas ajouter de viande ou de poisson si la recette est végétarienne).
+
+Liste d'ingrédients de l'utilisateur : [INGRÉDIENTS_FOURNIS_PAR_UTILISATEUR]`;
+
+const finalPrompt = systemPrompt + userPrompt;
+
 // La plupart des plateformes serverless utilisent ce format
 // On simule une connexion à une API d'IA
 const callAIAPI = async (prompt) => {
-    // Dans la réalité, ici on ferait un appel à une API comme celle de Gemini ou OpenAI
-    // Exemple : const response = await fetch('https://api.ia-service.com/generate', { ... });
-    
-    // Pour l'instant, on renvoie une fausse réponse pour tester
+    // Note importante : C'est ici que tu devras intégrer le vrai code pour appeler une API d'IA
+    // Pour l'instant, on renvoie une fausse réponse pour tester la structure
     const recipeData = {
-        name: 'Curry végétarien au riz',
-        ingredients: ['Riz', 'Haricots verts', 'Lait de coco', 'Curry en poudre', 'Oignons'],
-        shopping_list: ['Lait de coco', 'Curry en poudre'],
+        name: 'Poisson riz et tomate',
+        ingredients: ['Poisson', 'Riz', 'Tomate', 'Huile', 'Sel', 'Poivre'],
+        shopping_list: ['Rien à acheter, félicitations !'],
         instructions: [
             'Faites cuire le riz selon les instructions du paquet.',
-            'Dans une poêle, faites revenir les oignons et les haricots verts.',
-            'Ajoutez le lait de coco et le curry. Laissez mijoter.',
-            'Servez le mélange sur le riz cuit.'
+            'Dans une poêle, faites revenir le poisson et les tomates.',
+            'Salez, poivrez et servez le poisson avec le riz cuit.'
         ]
     };
     return recipeData;
@@ -24,7 +41,7 @@ module.exports = async (request, response) => {
     const { ingredients } = request.body;
     
     // 2. On construit notre prompt pour l'IA
-    const prompt = `Tu es un chef cuisinier simple et amical. Ton but est d'aider les gens à cuisiner un plat rapide avec ce qu'ils ont. À partir de la liste d'ingrédients ci-dessous, génère une recette simple et complète. Voici les règles strictes que tu dois suivre : 1. Le nom de la recette doit être court et facile à comprendre. 2. Crée une liste pour les "Ingrédients nécessaires" qui reprendra tous les ingrédients. 3. Crée une liste pour la "Liste de courses" qui ne contient que les ingrédients que l'utilisateur ne possède pas. 4. Rédige les "Instructions de préparation" en étapes courtes et claires. 5. Ton ton doit être simple, amical et encourageant. Voici les ingrédients de l'utilisateur : ${ingredients}`;
+    const prompt = finalPrompt.replace('[INGRÉDIENTS_FOURNIS_PAR_UTILISATEUR]', ingredients);
     
     // 3. On appelle notre "service d'IA"
     const recipe = await callAIAPI(prompt);
