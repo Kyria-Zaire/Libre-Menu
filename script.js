@@ -22,9 +22,10 @@ imageUpload.addEventListener('change', async (event) => {
     };
     reader.readAsDataURL(file);
 
-    // Prépare l'UI pour la reconnaissance et la génération
+    // Affiche le message de chargement
     ingredientsRecognitionSection.classList.add('hidden');
     getRecipeBtn.classList.add('hidden');
+    resultSection.classList.remove('hidden');
     resultSection.innerHTML = '<p>Analyse de votre image et génération de la recette...</p>';
 
     // Envoie l'image au backend
@@ -40,17 +41,15 @@ imageUpload.addEventListener('change', async (event) => {
         }
 
         const data = await response.json();
-        const recognizedIngredients = data.recognizedIngredients;
-        const recipe = data.recipe;
-
+        const { recognizedIngredients, recipe } = data;
+        
         // Affiche les ingrédients et la recette
         displayRecognizedIngredients(recognizedIngredients);
         displayRecipe(recipe);
 
         ingredientsRecognitionSection.classList.remove('hidden');
-        getRecipeBtn.classList.remove('hidden');
-        resultSection.classList.remove('hidden');
-
+        getRecipeBtn.classList.remove('hidden'); // Plus besoin, on peut le masquer
+        
     } catch (error) {
         console.error('Erreur:', error);
         resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue. Veuillez réessayer.</p>`;
