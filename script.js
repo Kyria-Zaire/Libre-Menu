@@ -7,9 +7,7 @@ const ingredientsList = document.getElementById('ingredients-list');
 const getRecipeBtn = document.getElementById('get-recipe-btn');
 const resultSection = document.getElementById('result-section');
 
-let recognizedIngredients = [];
-
-// Étape 1 : Gérer l'upload de l'image
+// Gérer l'upload de l'image
 imageUpload.addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) {
@@ -24,19 +22,16 @@ imageUpload.addEventListener('change', async (event) => {
     };
     reader.readAsDataURL(file);
 
-    // Prépare l'UI pour la reconnaissance des ingrédients
-    ingredientsRecognitionSection.classList.remove('hidden');
+    // Prépare l'UI pour la reconnaissance et la génération
+    ingredientsRecognitionSection.classList.add('hidden');
     getRecipeBtn.classList.add('hidden');
-    ingredientsList.innerHTML = '';
-    resultSection.innerHTML = '<p>Analyse de votre image...</p>';
+    resultSection.innerHTML = '<p>Analyse de votre image et génération de la recette...</p>';
 
     // Envoie l'image au backend
     try {
         const response = await fetch('/api/recipe', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: await toBase64(file) })
         });
         
@@ -45,54 +40,22 @@ imageUpload.addEventListener('change', async (event) => {
         }
 
         const data = await response.json();
-        recognizedIngredients = data.recognizedIngredients;
+        const recognizedIngredients = data.recognizedIngredients;
+        const recipe = data.recipe;
 
-        // Affiche les ingrédients et le bouton de génération
+        // Affiche les ingrédients et la recette
         displayRecognizedIngredients(recognizedIngredients);
-        resultSection.innerHTML = '<p>Liste d\'ingrédients prête !</p>';
-        getRecipeBtn.classList.remove('hidden');
-
-    } catch (error) {
-        console.error('Erreur:', error);
-        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue lors de l'analyse de l'image. Veuillez réessayer.</p>`;
-    }
-});
-
-
-// Étape 2 : Gérer la génération de la recette
-getRecipeBtn.addEventListener('click', async () => {
-    if (recognizedIngredients.length === 0) {
-        alert('Veuillez sélectionner au moins un ingrédient !');
-        return;
-    }
-
-    // Affiche l'état de chargement
-    getRecipeBtn.textContent = 'Génération en cours...';
-    getRecipeBtn.disabled = true;
-    resultSection.innerHTML = '<p>Préparation de la recette...</p>';
-
-    try {
-        const response = await fetch('/api/recipe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ ingredients: recognizedIngredients.join(', ') })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Erreur de connexion au serveur.');
-        }
-
-        const recipe = await response.json();
         displayRecipe(recipe);
-        
+
+        ingredientsRecognitionSection.classList.remove('hidden');
+        getRecipeBtn.classList.remove('hidden');
+        resultSection.classList.remove('hidden');
+
     } catch (error) {
         console.error('Erreur:', error);
-        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue lors de la génération de la recette. Veuillez réessayer.</p>`;
+        resultSection.innerHTML = `<p style="color:red;">Désolé, une erreur est survenue. Veuillez réessayer.</p>`;
     }
 });
-
 
 // Fonctions utilitaires
 function toBase64(file) {
@@ -110,27 +73,11 @@ function displayRecognizedIngredients(ingredients) {
         const tag = document.createElement('span');
         tag.className = 'ingredient-tag';
         tag.textContent = ingredient;
-        
-        const removeBtn = document.createElement('span');
-        removeBtn.className = 'remove-tag-btn';
-        removeBtn.textContent = 'x';
-        removeBtn.addEventListener('click', () => {
-            tag.remove();
-            const index = recognizedIngredients.indexOf(ingredient);
-            if (index > -1) {
-                recognizedIngredients.splice(index, 1);
-            }
-        });
-        
-        tag.appendChild(removeBtn);
         ingredientsList.appendChild(tag);
     });
 }
 
 function displayRecipe(recipe) {
-    getRecipeBtn.textContent = 'Générer ma recette';
-    getRecipeBtn.disabled = false;
-
     let htmlContent = `<h2>${recipe.name}</h2>`;
     
     htmlContent += '<h3>Ingrédients nécessaires :</h3><ul>';
