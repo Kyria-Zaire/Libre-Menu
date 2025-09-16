@@ -30,7 +30,7 @@ body {
     margin-bottom: 30px;
 }
 
-/* ===== UPLOAD ===== */
+/* ---------- UPLOAD ---------- */
 .upload-btn {
     display: inline-flex;
     align-items: center;
@@ -58,7 +58,7 @@ body {
     box-shadow: 0 6px 12px rgba(0,0,0,.08);
 }
 
-/* ===== INGREDIENTS ===== */
+/* ---------- INGREDIENTS ---------- */
 #ingredients-recognition-section {
     margin-top: 24px;
     text-align: left;
@@ -78,7 +78,7 @@ body {
     font-weight: 500;
 }
 
-/* ===== BOUTONS ===== */
+/* ---------- BOUTONS ---------- */
 #get-recipe-btn, #reset-btn {
     margin-top: 24px;
     padding: 14px 28px;
@@ -95,7 +95,7 @@ body {
 #reset-btn { background: #48bb78; }
 #reset-btn:hover { background: #38a169; }
 
-/* ===== CARTE RECETTE ===== */
+/* ---------- RECETTE CARTE ---------- */
 .recipe-card {
     margin-top: 30px;
     background: #ffffff;
@@ -108,8 +108,12 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
     padding: 22px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 .recipe-header h2 { font-size: 1.5rem; letter-spacing: .5px; }
+.prep { font-size: .95rem; opacity: .9; display: flex; align-items: center; gap: 6px; }
 
 .recipe-body { padding: 24px 28px; }
 .recipe-body h3 {
@@ -117,13 +121,31 @@ body {
     font-size: 1.1rem;
     color: #4a5568;
 }
-.recipe-body ul, .recipe-body ol {
-    margin-left: 20px;
-    line-height: 1.8;
+.ingr-list, .steps { margin-left: 6px; line-height: 1.9; }
+.ingr-list li { list-style: '▶️ '; padding-left: 8px; }
+.steps li { display: flex; align-items: flex-start; margin-bottom: 10px; }
+.step-nb {
+    background: #667eea;
+    color: #fff;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .8rem; margin-right: 10px; flex-shrink: 0;
 }
-.shopping-list.empty {
-    color: #718096;
-    font-style: italic;
+.shop-list .empty { color: #718096; font-style: italic; }
+
+/* ---------- BOUTON SAUVEGARDER ---------- */
+.save-btn {
+    margin-top: 24px;
+    padding: 12px 24px;
+    background: #48bb78;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .3s;
 }
+.save-btn:hover { background: #38a169; }
 
 .hidden { display: none; }

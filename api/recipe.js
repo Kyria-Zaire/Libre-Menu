@@ -4,7 +4,11 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 const textModel   = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-// ---------- RETRY ROBUSTE ----------
+
+const cleanJson = (str) =>
+  str.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+
+// Retry 3×
 async function robustGenerate(model, prompt, payload = null, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -14,12 +18,12 @@ async function robustGenerate(model, prompt, payload = null, retries = 3) {
       return result;
     } catch (e) {
       if (i === retries - 1) throw e;
-      await new Promise(r => setTimeout(r, 500 * (i + 1))); // backoff
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
     }
   }
 }
 
-// ---------- VISION ----------
+// Vision
 const callVisionAPI = async (base64Image) => {
   const prompt = 'Liste tous les aliments visibles en JSON unique. Réponse : ["item1", "item2", …]';
   const payload = {
@@ -28,7 +32,6 @@ const callVisionAPI = async (base64Image) => {
       mimeType: 'image/jpeg',
     },
   };
-
   try {
     const result = await robustGenerate(visionModel, prompt, payload);
     const raw = result.response.text().replace(/^[^{]*/, '').replace(/[^}]*$/, '');
@@ -38,21 +41,16 @@ const callVisionAPI = async (base64Image) => {
   }
 };
 
-// ---------- TEXTE ----------
+// Texte **avec prepTime**
 const callTextAPI = async (ingredients) => {
-  const prompt = `Tu es un robot JSON. Respecte scrupuleusement ces 4 lignes :
-1. Utilise TOUS ces ingrédients : ${ingredients.join(', ')}.
-2. Ne propose **aucun** ingrédient supplémentaire contradictoire.
-3. Réponse **uniquement** ce JSON, **sans** texte avant/après :
-{"name":"Nom (≤5 mots)","ingredients":[liste complète],"shopping_list":[manquants],"instructions":["Étape 1","Étape 2"]}
-4. Si tu hésites, invente une recette simple quand même.`;
-
+  const prompt = `JSON unique, sans texte avant/après :
+{"name":"Recette ${ingredients.slice(0, 2).join(' ')}" ,"ingredients":[${ingredients.map(i => `"${i}"`).join(',')},"sel","poivre","huile"],"shopping_list":[],"instructions":["Mélanger","Cuire 15 min"],"prepTime":"25 min"}`;
   try {
     const result = await robustGenerate(textModel, prompt);
     let raw = result.response.text();
     raw = raw.replace(/```/g, '').replace(/json/gi, '').trim();
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Pas de JSON détecté');
+    if (!match) throw new Error('Pas de JSON');
     return JSON.parse(match[0]);
   } catch (e) {
     console.warn('JSON invalide → fallback', e);
@@ -61,18 +59,18 @@ const callTextAPI = async (ingredients) => {
       ingredients: ingredients,
       shopping_list: [],
       instructions: ['Désolé, l’IA n’a pas pu formater la recette.'],
+      prepTime: '≈ 15 min'
     };
   }
 };
 
-// ---------- HANDLER ----------
+// Handler
 module.exports = async (req, res) => {
   const { image } = req.body;
   if (!image) return res.status(400).json({ error: 'Aucune image fournie.' });
-
   try {
     const recognized = await callVisionAPI(image);
-    const recipe     = await callTextAPI(recognized);
+    const recipe = await callTextAPI(recognized);
     res.status(200).json({ recognizedIngredients: recognized, recipe });
   } catch (err) {
     console.error('Function error:', err);
