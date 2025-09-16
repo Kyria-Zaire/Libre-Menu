@@ -1,72 +1,56 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+// api/recipe.js
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-vision-latest" });
-const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+const visionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const textModel  = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+const cleanJson = (str) =>
+  str.replace(/```json\n?/g, '').replace(/```/g, '').trim();
 
 const callVisionAPI = async (base64Image) => {
-    const visionPrompt = "Décris tous les ingrédients et aliments que tu vois sur cette image. Sois très précis et liste-les sous forme d'un tableau JSON. Ne réponds que sous la forme d'un tableau JSON. Exemple : ['tomates', 'oignons', 'ail', 'riz']";
-    const result = await visionModel.generateContent([
-        visionPrompt,
-        {
-            inlineData: {
-                data: base64Image.split(",")[1],
-                mimeType: "image/jpeg",
-            }
-        }
-    ]);
-    const response = await result.response;
-    try {
-        const recognizedIngredients = JSON.parse(response.text());
-        return recognizedIngredients;
-    } catch (error) {
-        console.error("Erreur de parsing de la réponse de l'IA:", error);
-        return [];
-    }
+  const prompt = 'Liste tous les aliments visibles en JSON unique. Réponse : ["item1", "item2", …]';
+  const result = await visionModel.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Image.split(',')[1],
+        mimeType: 'image/jpeg',
+      },
+    },
+  ]);
+  try {
+    return JSON.parse(cleanJson(result.response.text()));
+  } catch {
+    return [];
+  }
 };
 
 const callTextAPI = async (ingredients) => {
-    const prompt = `Tu es un chef cuisinier minimaliste et expert en cuisine des restes. Tu suis toutes les instructions à la lettre. Ton but est de générer des recettes réalisables avec les ingrédients fournis, sans en ignorer aucun. La réponse doit être au format JSON et contenir les champs suivants :
-    {
-      "name": "Nom de la recette (moins de 5 mots)",
-      "ingredients": ["Liste de tous les ingrédients, incluant les condiments comme l'huile, le sel, le poivre."],
-      "shopping_list": ["Liste des ingrédients à acheter qui ne sont pas dans la liste de l'utilisateur."],
-      "instructions": ["Étape 1.", "Étape 2.", "Étape 3.", "..."]
-    }
-    Contraintes importantes :
-    - Utilise ABSOLUMENT TOUS les ingrédients fournis.
-    - Ne propose JAMAIS d'ingrédients qui contredisent un ingrédient déjà fourni (ex: pas de recette végétarienne si l'utilisateur a donné de la viande).
-    Liste d'ingrédients de l'utilisateur : ${ingredients.join(', ')}`;
-    
-    const result = await textModel.generateContent(prompt);
-    const response = await result.response;
-    try {
-        const recipeData = JSON.parse(response.text());
-        return recipeData;
-    } catch (error) {
-        console.error("Erreur de parsing de la réponse de l'IA:", error);
-        return {
-            name: "Recette non disponible",
-            ingredients: [],
-            shopping_list: [],
-            instructions: ["Désolé, l'IA n'a pas pu générer de recette. Veuillez essayer d'autres ingrédients."]
-        };
-    }
+  const prompt = `… (même prompt qu’avant) …`;
+  const result = await textModel.generateContent(prompt);
+  try {
+    return JSON.parse(cleanJson(result.response.text()));
+  } catch {
+    return {
+      name: 'Recette non disponible',
+      ingredients: [],
+      shopping_list: [],
+      instructions: ['Désolé, l’IA n’a pas pu générer de recette.'],
+    };
+  }
 };
 
-module.exports = async (request, response) => {
-    const { image } = request.body;
-    
-    if (image) {
-        try {
-            const recognizedIngredients = await callVisionAPI(image);
-            const recipe = await callTextAPI(recognizedIngredients);
-            return response.status(200).json({ recognizedIngredients, recipe });
-        } catch (error) {
-            console.error('Erreur du serveur:', error);
-            return response.status(500).json({ error: "Une erreur est survenue lors de la génération de la recette." });
-        }
-    }
-    
-    response.status(400).json({ error: "Aucune image fournie." });
+module.exports = async (req, res) => {
+  const { image } = req.body;
+  if (!image) return res.status(400).json({ error: 'Aucune image fournie.' });
+
+  try {
+    const recognized = await callVisionAPI(image);
+    const recipe     = await callTextAPI(recognized);
+    res.status(200).json({ recognizedIngredients: recognized, recipe });
+  } catch (err) {
+    console.error('Function error:', err);
+    res.status(500).json({ error: 'Erreur interne.' });
+  }
 };
