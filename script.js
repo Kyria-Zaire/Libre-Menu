@@ -26,15 +26,14 @@ imageUpload.addEventListener('change', async (event) => {
     resultSection.classList.remove('hidden');
     resultSection.innerHTML = '<p>Analyse de votre image et génération de la recette...</p>';
 
-    // Crée un objet FormData pour envoyer le fichier
-    const formData = new FormData();
-    formData.append('image', file);
-
-    // Envoie l'image au backend
     try {
+        // Envoie l'image encodée en base64 au backend
+        const base64Image = await toBase64(file);
+        
         const response = await fetch('/api/recipe', {
             method: 'POST',
-            body: formData, // Envoi direct du FormData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image })
         });
         
         if (!response.ok) {
@@ -57,6 +56,15 @@ imageUpload.addEventListener('change', async (event) => {
 });
 
 // Fonctions utilitaires
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
 function displayRecognizedIngredients(ingredients) {
     ingredientsList.innerHTML = '';
     ingredients.forEach(ingredient => {
