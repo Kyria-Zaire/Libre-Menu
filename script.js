@@ -27,7 +27,6 @@ imageUpload.addEventListener('change', async (event) => {
     resultSection.innerHTML = '<p>Analyse de votre image et génération de la recette...</p>';
 
     try {
-        // Envoie l'image encodée en base64 au backend
         const base64Image = await toBase64(file);
         
         const response = await fetch('/api/recipe', {
@@ -43,7 +42,6 @@ imageUpload.addEventListener('change', async (event) => {
         const data = await response.json();
         const { recognizedIngredients, recipe } = data;
         
-        // Affiche les ingrédients et la recette
         displayRecognizedIngredients(recognizedIngredients);
         displayRecipe(recipe);
 
@@ -55,7 +53,6 @@ imageUpload.addEventListener('change', async (event) => {
     }
 });
 
-// Fonctions utilitaires
 function toBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -77,7 +74,6 @@ function displayRecognizedIngredients(ingredients) {
 
 function displayRecipe(recipe) {
     let htmlContent = `<h2>${recipe.name}</h2>`;
-    
     htmlContent += '<h3>Ingrédients nécessaires :</h3><ul>';
     recipe.ingredients.forEach(item => {
         htmlContent += `<li>${item}</li>`;
