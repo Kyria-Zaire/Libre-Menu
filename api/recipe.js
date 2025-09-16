@@ -1,13 +1,7 @@
-// La plupart des plateformes serverless utilisent ce format
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Accède à la clé API depuis les variables d'environnement de Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Initialise le modèle de vision pour l'analyse d'image
 const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-vision-latest" });
-
-// Initialise le modèle de texte pour la génération de recette
 const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
 const callVisionAPI = async (base64Image) => {

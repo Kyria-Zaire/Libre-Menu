@@ -1,0 +1,11 @@
+{
+    "functions": {
+      "api/recipe.js": {
+        "maxDuration": 10,
+        "memory": 1024,
+        "bodyParser": {
+          "sizeLimit": "4mb"
+        }
+      }
+    }
+  }
