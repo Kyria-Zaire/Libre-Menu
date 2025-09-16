@@ -5,9 +5,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const visionModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
 const textModel   = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-const cleanJson = (str) =>
-  str.replace(/^[^{]*/, '').replace(/[^}]*$/, ''); // garde seulement {…}
-
 // ---------- RETRY ROBUSTE ----------
 async function robustGenerate(model, prompt, payload = null, retries = 3) {
   for (let i = 0; i < retries; i++) {
@@ -17,7 +14,7 @@ async function robustGenerate(model, prompt, payload = null, retries = 3) {
         : await model.generateContent(prompt);
       return result;
     } catch (e) {
-      if (i === retries - 1) throw e; // dernier essai → on lance
+      if (i === retries - 1) throw e;
       await new Promise(r => setTimeout(r, 500 * (i + 1))); // backoff
     }
   }
@@ -35,7 +32,8 @@ const callVisionAPI = async (base64Image) => {
 
   try {
     const result = await robustGenerate(visionModel, prompt, payload);
-    return JSON.parse(cleanJson(result.response.text()));
+    const raw = result.response.text().replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+    return JSON.parse(raw);
   } catch {
     return [];
   }
@@ -43,23 +41,20 @@ const callVisionAPI = async (base64Image) => {
 
 // ---------- TEXTE ----------
 const callTextAPI = async (ingredients) => {
-  const prompt = `Tu es un chef cuisinier minimaliste et expert en cuisine des restes.
-Règles ABSOLUES :
-- Utilise TOUS les ingrédients fournis : ${ingredients.join(', ')}.
-- Ne jamais proposer d’ingrédients contradictoires.
-- Réponse UNIQUEMENT au format JSON ci-dessous, sans aucun commentaire avant ou après.
-{
-  "name":"Nom recette (≤5 mots)",
-  "ingredients":["tous ingrédients, condiments inclus"],
-  "shopping_list":["seuls ingrédients manquants"],
-  "instructions":["Étape 1","Étape 2","…"]
-}
-Si tu échoues, je perds mon travail.`;
+  const prompt = `Tu es un robot JSON. Respecte scrupuleusement ces 4 lignes :
+1. Utilise TOUS ces ingrédients : ${ingredients.join(', ')}.
+2. Ne propose **aucun** ingrédient supplémentaire contradictoire.
+3. Réponse **uniquement** ce JSON, **sans** texte avant/après :
+{"name":"Nom (≤5 mots)","ingredients":[liste complète],"shopping_list":[manquants],"instructions":["Étape 1","Étape 2"]}
+4. Si tu hésites, invente une recette simple quand même.`;
 
   try {
     const result = await robustGenerate(textModel, prompt);
-    const raw = result.response.text();
-    return JSON.parse(cleanJson(raw));
+    let raw = result.response.text();
+    raw = raw.replace(/```/g, '').replace(/json/gi, '').trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Pas de JSON détecté');
+    return JSON.parse(match[0]);
   } catch (e) {
     console.warn('JSON invalide → fallback', e);
     return {
